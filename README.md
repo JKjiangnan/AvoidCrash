@@ -1,9 +1,10 @@
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/chenfanfang/AvoidCrash) [![pod](https://img.shields.io/badge/pod-1.6.7-orange.svg)](https://github.com/chenfanfang/AvoidCrash) [![platform](https://img.shields.io/badge/platform-iOS-ff69b4.svg)](https://github.com/chenfanfang/AvoidCrash) [![aboutme](https://img.shields.io/badge/about%20me-chenfanfang-blue.svg)](http://www.jianshu.com/users/80fadb71940d/latest_articles)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/chenfanfang/AvoidCrash) [![pod](https://img.shields.io/badge/pod-2.3.0--beta-yellow.svg)](https://github.com/chenfanfang/AvoidCrash) [![platform](https://img.shields.io/badge/platform-iOS-ff69b4.svg)](https://github.com/chenfanfang/AvoidCrash) [![aboutme](https://img.shields.io/badge/about%20me-chenfanfang-blue.svg)](http://www.jianshu.com/users/80fadb71940d/latest_articles)
 
 
 前言
 ===
 一个已经发布到AppStore上的App，最忌讳的就是崩溃问题。为什么在开发阶段或者测试阶段都不会崩溃，而发布到AppStore上就崩溃了呢？究其根源，最主要的原因就是数据的错乱。特别是 服务器返回数据的错乱，将严重影响到我们的App。
+
 
 
 ---
@@ -23,7 +24,7 @@ AvoidCrash简介
 - 你可以获取到原本导致崩溃的主要信息<由于这个框架的存在，并不会崩溃>，进行相应的处理。比如：
   - 你可以将这些崩溃信息发送到自己服务器。
   - 你若集成了第三方崩溃日志收集的SDK,比如你用了腾讯的Bugly,你可以上报自定义异常。
-- 或许你会问有JSPatch就可以下发补丁来修复bug,为什么要用AvoidCrash？我只能说，AvoidCrash可以有效防止部分常见崩溃，JSPatch可以快速修复bug.推荐将两者都集成到项目中去。
+- 或许你会问就算防止了崩溃，但是所获取到的数据变成nil或者并非是你所需要的数据，这又有什么用？对于防止崩溃，我的理解是，宁愿一个功能不能用，都要让app活着，至少其他功能还能用。
 
 ---
 下面先来看下防止崩溃的效果吧
@@ -52,7 +53,7 @@ AvoidCrash简介
 ### From CocoaPods【使用CocoaPods】
 
 ```ruby
-pod  AvoidCrash
+pod 'AvoidCrash', '~> 2.3.0-beta'
 ```
 
 ### Manually【手动导入】
@@ -65,20 +66,59 @@ pod  AvoidCrash
 
 
 ---
-##使用方法
 
-- 在AppDelegate的didFinishLaunchingWithOptions方法中添加如下代码，让AvoidCrash生效
+
+使用方法
+===
+
+
+
+- AvoidCrash使用注意点讲解
+```
+       //让AvoidCrash生效方法有两个becomeEffective和makeAllEffective，若都不调用，则AvoidCrash就不起作用
+       [AvoidCrash becomeEffective]; //【默认不开启  对”unrecognized selector sent to instance”防止崩溃的处理】
+       
+       //若要开启对对”unrecognized selector sent to instance”防止崩溃的处理】，请使用
+       //[AvoidCrash makeAllEffective],使用注意点，请看AvoidCrash.h中的描述，必须配合[AvoidCrash setupNoneSelClassStringsArr:]的使用
+       //【建议在didFinishLaunchingWithOptions最初始位置调用】[AvoidCrash makeAllEffective]
+       
+     /*
+      [AvoidCrash becomeEffective]和[AvoidCrash makeAllEffective]是全局生效。若你只需要部分生效，你可以单个进行处理，比如:
+      [NSArray avoidCrashExchangeMethod];
+      [NSMutableArray avoidCrashExchangeMethod];
+      .................
+      .................
+      */
+```
+
+- 在AppDelegate的didFinishLaunchingWithOptions方法中的最初始位置添加如下代码，让AvoidCrash生效
+
 
 ```
-//这句代码会让AvoidCrash生效，若没有如下代码，则AvoidCrash就不起作用
-[AvoidCrash becomeEffective]; 
-   /*
-    *  [AvoidCrash becomeEffective]，是全局生效。若你只需要部分生效，你可以单个进行处理，比如:
-    *  [NSArray avoidCrashExchangeMethod];
-    *  [NSMutableArray avoidCrashExchangeMethod];
-    *  .................
-    *  .................
-    */
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    
+    //启动防止崩溃功能(注意区分becomeEffective和makeAllEffective的区别)
+    //具体区别请看 AvoidCrash.h中的描述
+    //建议在didFinishLaunchingWithOptions最初始位置调用 上面的方法
+    
+    [AvoidCrash makeAllEffective];
+    
+    //若出现unrecognized selector sent to instance导致的崩溃并且控制台输出:
+    //-[__NSCFConstantString initWithName:age:height:weight:]: unrecognized selector sent to instance
+    //你可以将@"__NSCFConstantString"添加到如下数组中，当然，你也可以将它的父类添加到下面数组中
+    //比如，对于部分字符串，继承关系如下
+    //__NSCFConstantString --> __NSCFString --> NSMutableString --> NSString
+    //你可以将上面四个类随意一个添加到下面的数组中，建议直接填入 NSString
+    NSArray *noneSelClassStrings = @[
+                                     @"NSString"
+                                     ];
+    [AvoidCrash setupNoneSelClassStringsArr:noneSelClassStrings];
+    
+    
+    //监听通知:AvoidCrashNotification, 获取AvoidCrash捕获的崩溃日志的详细信息
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(dealwithCrashMessage:) name:AvoidCrashNotification object:nil];
+    return YES;
+}
 ```
 
 - 若你想要获取崩溃日志的所有详细信息，只需添加通知的监听，监听的通知名为:AvoidCrashNotification
@@ -115,6 +155,13 @@ pod  AvoidCrash
 目前可以防止崩溃的方法有
 ===
 ---
+
+
+- unrecognized selector sent to instance
+   -  `1. 对”unrecognized selector sent to instance”防止崩溃的处理`
+
+---
+
  - NSArray
    -  `1. NSArray的快速创建方式 NSArray *array = @[@"chenfanfang", @"AvoidCrash"];  //这种创建方式其实调用的是2中的方法`
    -  `2. +(instancetype)arrayWithObjects:(const id  _Nonnull __unsafe_unretained *)objects count:(NSUInteger)cnt`
@@ -143,6 +190,8 @@ pod  AvoidCrash
   - `2. +(instancetype)dictionaryWithObjects:(const id  _Nonnull __unsafe_unretained *)objects forKeys:(const id<NSCopying>  _Nonnull __unsafe_unretained *)keys count:(NSUInteger)cnt`
 
 ---
+
+
 - NSMutableDictionary
   - `1. - (void)setObject:(id)anObject forKey:(id<NSCopying>)aKey`
   - `2. - (void)removeObjectForKey:(id)aKey`
@@ -150,6 +199,8 @@ pod  AvoidCrash
   
   
 ---
+
+
 - NSString
 	- `1. - (unichar)characterAtIndex:(NSUInteger)index`
 	- `2. - (NSString *)substringFromIndex:(NSUInteger)from`
@@ -161,6 +212,7 @@ pod  AvoidCrash
 
 ---
 
+
 - NSMutableString
 	- `1. 由于NSMutableString是继承于NSString,所以这里和NSString有些同样的方法就不重复写了`
 	- `2. - (void)replaceCharactersInRange:(NSRange)range withString:(NSString *)aString`
@@ -169,6 +221,8 @@ pod  AvoidCrash
 
   
 ---
+
+
 - KVC
   -  `1.- (void)setValue:(id)value forKey:(NSString *)key`
   -  `2.- (void)setValue:(id)value forKeyPath:(NSString *)keyPath`
@@ -176,31 +230,39 @@ pod  AvoidCrash
   -  `4.- (void)setValuesForKeysWithDictionary:(NSDictionary<NSString *,id> *)keyedValues`
 
 ---
+
 - NSAttributedString
- *  `1.- (instancetype)initWithString:(NSString *)str`
- *  `2.- (instancetype)initWithAttributedString:(NSAttributedString *)attrStr`
- *  `3.- (instancetype)initWithString:(NSString *)str attributes:(NSDictionary<NSString *,id> *)attrs`
+  -  `1.- (instancetype)initWithString:(NSString *)str`
+  -  `2.- (instancetype)initWithAttributedString:(NSAttributedString *)attrStr`
+  -  `3.- (instancetype)initWithString:(NSString *)str attributes:(NSDictionary<NSString *,id> *)attrs`
 
 ---
+
+
 - NSMutableAttributedString
- *  `1.- (instancetype)initWithString:(NSString *)str`
- *  `2.- (instancetype)initWithString:(NSString *)str attributes:(NSDictionary<NSString *,id> *)attrs`
+  -  `1.- (instancetype)initWithString:(NSString *)str`
+  -  `2.- (instancetype)initWithString:(NSString *)str attributes:(NSDictionary<NSString *,id> *)attrs`
 
 
 更新
 ===
-#### 2016-10-15
-- 修复上一个版本部分方法不能拦截崩溃的BUG，具体修复哪些可以查看issues和简书上的留言。
-- 优化崩溃代码的定位，定位崩溃代码更加准确。
-- 增加对KVC赋值防止崩溃的处理。
-- 增加对NSAttributedString防止崩溃的处理
-- 增加对NSMutableAttributedString防止崩溃的处理
+#### 2017-08-11
+- 	优化对”unrecognized selector sent to instance”防止崩溃的处理
+
+#### 2017-07-25
+- 	优化对”unrecognized selector sent to instance”防止崩溃的处理
 
 
-#### 2016-11-29
-- 修复在键盘弹出状态下，按Home键进入后台会导致崩溃的bug。
-- 新增防止崩溃（NSArray、NSMutableArray） `- (NSArray *)objectsAtIndexes:(NSIndexSet *)indexes`
+#### 2017-07-23
+- 	增加对”unrecognized selector sent to instance”防止崩溃的处理
 
+---
+
+#### 2016-12-19
+- Release环境下取消控制台的输出。
+
+
+---
 
 #### 2016-12-1
 - 处理数组的类簇问题，提高兼容性，不论是由于array[100]方式，还是[array objectAtIndex:100]方式 获取数组中的某个元素操作不当而导致的crash,都能被拦截防止崩溃。
@@ -211,8 +273,26 @@ pod  AvoidCrash
 
 - 新增防止崩溃 （NSArray、NSMutableArray） `- (void)getObjects:(__unsafe_unretained id  _Nonnull *)objects range:(NSRange)range`
 
-#### 2016-12-19
-- Release环境下取消控制台的输出。
+
+---
+
+#### 2016-11-29
+- 修复在键盘弹出状态下，按Home键进入后台会导致崩溃的bug。
+- 新增防止崩溃（NSArray、NSMutableArray） `- (NSArray *)objectsAtIndexes:(NSIndexSet *)indexes`
+
+---
+
+
+
+#### 2016-10-15
+- 修复上一个版本部分方法不能拦截崩溃的BUG，具体修复哪些可以查看issues和简书上的留言。
+- 优化崩溃代码的定位，定位崩溃代码更加准确。
+- 增加对KVC赋值防止崩溃的处理。
+- 增加对NSAttributedString防止崩溃的处理
+- 增加对NSMutableAttributedString防止崩溃的处理
+
+---
+
 
 
 提示
@@ -232,7 +312,8 @@ pod  AvoidCrash
 
 
 
-##[About me -- 简书](http://www.jianshu.com/users/80fadb71940d/latest_articles)
+[About me -- 简书](http://www.jianshu.com/users/80fadb71940d/latest_articles)
+===
 
 
 

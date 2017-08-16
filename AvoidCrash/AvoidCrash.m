@@ -1,6 +1,6 @@
 //
 //  AvoidCrash.m
-//  AvoidCrash
+//  https://github.com/chenfanfang/AvoidCrash
 //
 //  Created by mac on 16/9/21.
 //  Copyright © 2016年 chenfanfang. All rights reserved.
@@ -9,8 +9,7 @@
 #import "AvoidCrash.h"
 
 
-#define AvoidCrashSeparator         @"================================================================"
-#define AvoidCrashSeparatorWithFlag @"========================AvoidCrash Log=========================="
+
 
 #define key_errorName        @"errorName"
 #define key_errorReason      @"errorReason"
@@ -22,15 +21,21 @@
 
 @implementation AvoidCrash
 
-/**
- *  开始生效(进行方法的交换)
- */
+
 + (void)becomeEffective {
+    [self effectiveIfDealWithNoneSel:NO];
     
+}
+
++ (void)makeAllEffective {
+    [self effectiveIfDealWithNoneSel:YES];
+}
+
++ (void)effectiveIfDealWithNoneSel:(BOOL)dealWithNoneSel {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         
-        [NSObject avoidCrashExchangeMethod];
+        [NSObject avoidCrashExchangeMethodIfDealWithNoneSel:dealWithNoneSel];
         
         [NSArray avoidCrashExchangeMethod];
         [NSMutableArray avoidCrashExchangeMethod];
@@ -45,6 +50,11 @@
         [NSMutableAttributedString avoidCrashExchangeMethod];
     });
 }
+
++ (void)setupNoneSelClassStringsArr:(NSArray<NSString *> *)classStrings {
+    [NSObject setupNoneSelClassStringsArr:classStrings];
+}
+
 
 /**
  *  类方法的交换
@@ -97,7 +107,7 @@
 /**
  *  获取堆栈主要崩溃精简化的信息<根据正则表达式匹配出来>
  *
- *  @param callStackSymbolStr 堆栈主要崩溃信息
+ *  @param callStackSymbols 堆栈主要崩溃信息
  *
  *  @return 堆栈主要崩溃精简化的信息
  */
@@ -173,10 +183,13 @@
     
     NSString *errorPlace = [NSString stringWithFormat:@"Error Place:%@",mainCallStackSymbolMsg];
     
-    NSString *logErrorMessage = [NSString stringWithFormat:@"\n\n%@\n\n%@\n%@\n%@\n%@\n\n%@\n\n",AvoidCrashSeparatorWithFlag, errorName, errorReason, errorPlace, defaultToDo, AvoidCrashSeparator];
+    NSString *logErrorMessage = [NSString stringWithFormat:@"\n\n%@\n\n%@\n%@\n%@\n%@",AvoidCrashSeparatorWithFlag, errorName, errorReason, errorPlace, defaultToDo];
+    
+    logErrorMessage = [NSString stringWithFormat:@"%@\n\n%@\n\n",logErrorMessage,AvoidCrashSeparator];
     AvoidCrashLog(@"%@",logErrorMessage);
     
-    //请忽略下面的赋值，目的只是为了能顺利上传cocoapods
+    
+    //请忽略下面的赋值，目的只是为了能顺利上传到cocoapods
     logErrorMessage = logErrorMessage;
     
     NSDictionary *errorInfoDic = @{
@@ -192,9 +205,8 @@
     dispatch_async(dispatch_get_main_queue(), ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:AvoidCrashNotification object:nil userInfo:errorInfoDic];
     });
-    
-    
 }
+
 
 
 @end
